@@ -1,4 +1,15 @@
-
+# Python
 __pycache__/
 *.pyc
+*.pyo
+
+# Virtual environments
+venv/
 .env
+
+# Packaging artifacts
+*.egg-info/
+
+
+# OS
+.DS_Store
