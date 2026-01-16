@@ -7,12 +7,7 @@ def main():
         description="SecurePass Inspector - Password Security Analysis Tool"
     )
 
-    parser.add_argument(
-        "password",
-        type=str,
-        help="Password to analyze"
-    )
-
+    parser.add_argument("password", type=str, help="Password to analyze")
     args = parser.parse_args()
 
     result = score_password(args.password)
@@ -21,7 +16,8 @@ def main():
     print("-" * 40)
     print(f"Risk Level : {result['risk']}")
     print(f"Score      : {result['score']} / 100")
-    print(f"Entropy    : {round(result['entropy'], 2)}")
+    print(f"Entropy    : {result['entropy']} bits")
+    print(f"Brute-force time (offline attack): {result['bruteforce_time']}")
 
     if result["issues"]:
         print("\n⚠️ Issues Found:")

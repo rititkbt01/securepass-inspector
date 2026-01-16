@@ -1,60 +1,41 @@
-from securepass_inspector.checker.entropy import calculate_entropy
-from securepass_inspector.checker.patterns import (
-    detect_dictionary_words,
-    detect_keyboard_patterns,
-    detect_sequential_patterns
-)
-from securepass_inspector.checker.rules import check_basic_rules
+from .entropy import calculate_entropy
+from .patterns import detect_patterns
+from .bruteforce import estimate_bruteforce_time
+from .hash_profiles import HASH_ATTACK_SPEEDS
 
 
-def score_password(password: str) -> dict:
-    """
-    Calculates overall password risk score and classification.
-    """
+def score_password(password: str, hash_type="bcrypt"):
+    entropy = calculate_entropy(password)
+    issues = detect_patterns(password)
+
+    # 🔴 CRITICAL FIX: Penalize dictionary / human patterns
+    if any("dictionary" in issue.lower() for issue in issues):
+        entropy *= 0.4  # reduce entropy by 60%
+
+    attack_speed = HASH_ATTACK_SPEEDS.get(hash_type, 1_000_000_000)
+    bruteforce_time = estimate_bruteforce_time(entropy, attack_speed)
 
     score = 100
-    reasons = []
 
-    # 1. Basic rules
-    rules = check_basic_rules(password)
-    for rule, passed in rules.items():
-        if not passed:
-            score -= 10
-            reasons.append(f"Failed rule: {rule}")
-
-    # 2. Entropy evaluation
-    entropy = calculate_entropy(password)
-    if entropy < 50:
-        score -= 30
-        reasons.append("Low password entropy")
-
-    # 3. Pattern detection
-    if detect_dictionary_words(password):
-        score -= 25
-        reasons.append("Contains common dictionary word")
-
-    if detect_keyboard_patterns(password):
+    if entropy < 40:
+        score -= 40
+    elif entropy < 60:
         score -= 20
-        reasons.append("Contains keyboard pattern")
 
-    if detect_sequential_patterns(password):
-        score -= 20
-        reasons.append("Contains sequential pattern")
-
-    # Normalize score
+    score -= len(issues) * 15
     score = max(score, 0)
 
-    # Risk classification
     if score >= 80:
-        risk = "LOW"
+        risk = "Low"
     elif score >= 50:
-        risk = "MEDIUM"
+        risk = "Medium"
     else:
-        risk = "HIGH"
+        risk = "High"
 
     return {
-        "score": score,
         "risk": risk,
-        "entropy": entropy,
-        "issues": reasons
+        "score": score,
+        "entropy": round(entropy, 2),
+        "bruteforce_time": bruteforce_time,
+        "issues": issues,
     }

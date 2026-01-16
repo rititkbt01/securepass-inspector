@@ -1,0 +1,68 @@
+import argparse
+from securepass_inspector.checker.scorer import score_password
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="SecurePass Inspector - Password Security Analysis Tool"
+    )
+
+    parser.add_argument(
+        "password",
+        type=str,
+        help="Password to analyze"
+    )
+
+    args = parser.parse_args()
+
+    result = score_password(args.password)
+    print(f"Hash Algorithm: {result['hash_algorithm']}")
+    print("\n🔐 SecurePass Inspector Report")
+    print("-" * 40)
+    print(f"Risk Level : {result['risk']}")
+    print(f"Score      : {result['score']} / 100")
+    print(f"Entropy    : {round(result['entropy'], 2)}")
+    print(f"Estimate brute-force time: {result['bruteforce_time']}")
+    from .entropy import calculate_entropy
+from .patterns import detect_patterns
+from .bruteforce import estimate_bruteforce_time
+from .hash_profiles import HASH_ATTACK_SPEEDS
+
+def score_password(password, hash_algo="bcrypt"):
+    entropy = calculate_entropy(password)
+    issues = detect_patterns(password)
+
+    guesses_per_second = HASH_ATTACK_SPEEDS.get(hash_algo, 100)
+    brute_seconds = estimate_bruteforce_time(entropy, guesses_per_second)
+
+    score = 100
+
+    if entropy < 50:
+        score -= 30
+    if issues:
+        score -= 20
+    if len(password) < 8:
+        score -= 30
+
+    score = max(score, 0)
+
+    return {
+        "entropy": round(entropy, 2),
+        "score": score,
+        "issues": issues,
+        "hash_algorithm": hash_algo,
+        "bruteforce_seconds": brute_seconds
+    }
+
+    if result["issues"]:
+        print("\n⚠️ Issues Found:")
+        for issue in result["issues"]:
+            print(f" - {issue}")
+    else:
+        print("\n✅ No major security issues detected.")
+
+    print("-" * 40)
+
+
+if __name__ == "__main__":
+    main()
